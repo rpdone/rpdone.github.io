@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- **FIX:** Content-Security-Policy para permitir la conexión a Supabase -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self'; 
+                   script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net/npm/chart.js https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2; 
+                   style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; 
+                   font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; 
+                   connect-src 'self' https://iulaecdekmmgyuzywqdr.supabase.co https://*.static.domains https://static.app; 
+                   img-src 'self' data:; 
+                   frame-src 'self';">
+    <title>PrestamistaAPP - Conectado a Supabase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase Client Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .sidebar { transition: transform 0.3s ease-in-out; }
+        .main-content { transition: margin-left 0.3s ease-in-out; }
+        @media print {
+            body * { visibility: hidden; }
+            .print-area, .print-area * { visibility: visible; }
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none; }
+        }
+        .chart-container { height: 350px; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        /* Loader Style */
+        #loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <!-- Loader -->
+    <div id="loader">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar bg-gray-800 text-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0">
+        <a href="#" class="text-white flex items-center space-x-2 px-4">
+            <i class="fas fa-hand-holding-dollar fa-2x"></i>
+            <span class="text-2xl font-extrabold">PrestamistaAPP</span>
+        </a>
+
+        <nav>
+            <a href="#dashboard" class="nav-link block py-2.5 px-4 rounded transition duration-200 bg-gray-700">
+                <i class="fas fa-home mr-2"></i>Dashboard
+            </a>
+            <a href="#loans" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                <i class="fas fa-file-invoice-dollar mr-2"></i>Préstamos
+            </a>
+            <a href="#clients" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                <i class="fas fa-users mr-2"></i>Clientes
+            </a>
+             <a href="#receivables" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                <i class="fas fa-cash-register mr-2"></i>Cuentas por Cobrar
+            </a>
+            <a href="#applications" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                <i class="fas fa-inbox mr-2"></i>Solicitudes
+            </a>
+            <a href="#cashbox" class="nav-link block py-2.5 px-4 rounded transition duration-200 hover:bg-gray-700">
+                <i class="fas fa-cash-register mr-2"></i>Caja / Gastos
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Contenido Principal -->
+    <div class="main-content flex-1 flex flex-col overflow-hidden">
+        <header class="flex justify-between items-center p-4 bg-white border-b-2 border-gray-200 no-print">
+            <button id="menu-button" class="md:hidden">
+                <i class="fas fa-bars fa-lg"></i>
+            </button>
+            <h1 class="text-2xl font-semibold text-gray-800" id="page-title">Dashboard</h1>
+            <div class="flex items-center space-x-4">
+                <i class="fas fa-bell text-gray-500"></i>
+                <span class="text-sm">Admin</span>
+                <div class="w-10 h-10 rounded-full bg-gray-300"></div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+            
+            <!-- Vistas de la Aplicación -->
+            <div id="dashboard" class="page">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-gray-500 text-sm font-medium">Capital Pendiente</h3>
+                        <p class="text-3xl font-bold text-blue-600" id="stat-pending-capital">$0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-gray-500 text-sm font-medium">Ingresos del Mes</h3>
+                        <p class="text-3xl font-bold text-green-600" id="stat-month-income">$0.00</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-gray-500 text-sm font-medium">Préstamos Activos</h3>
+                        <p class="text-3xl font-bold text-yellow-600" id="stat-active-loans">0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-gray-500 text-sm font-medium">Clientes con Mora</h3>
+                        <p class="text-3xl font-bold text-red-600" id="stat-late-clients">0</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-semibold mb-4">Reporte de Ingresos Mensuales</h3>
+                        <div class="chart-container"><canvas id="incomeChart"></canvas></div>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="font-semibold mb-4">Notificaciones</h3>
+                        <div id="notifications-list" class="space-y-4"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="loans" class="page hidden">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Listado de Préstamos</h2>
+                        <button id="open-loan-modal" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"><i class="fas fa-plus mr-2"></i>Nuevo Préstamo</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Cliente</th><th class="py-2 px-4 text-left">Monto</th><th class="py-2 px-4 text-left">Balance</th><th class="py-2 px-4 text-left">Estado</th><th class="py-2 px-4 text-left">Acciones</th></tr></thead><tbody id="loans-table-body"></tbody></table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="clients" class="page hidden">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Listado de Clientes</h2>
+                        <button id="open-client-modal" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"><i class="fas fa-user-plus mr-2"></i>Nuevo Cliente</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Nombre</th><th class="py-2 px-4 text-left">Cédula</th><th class="py-2 px-4 text-left">Teléfono</th><th class="py-2 px-4 text-left">Acciones</th></tr></thead><tbody id="clients-table-body"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="receivables" class="page hidden">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-bold mb-4">Cuentas por Cobrar</h2>
+                     <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Cliente</th><th class="py-2 px-4 text-left">Préstamo ID</th><th class="py-2 px-4 text-left">Balance Pendiente</th><th class="py-2 px-4 text-left">Próximo Pago</th><th class="py-2 px-4 text-left">Estado</th></tr></thead><tbody id="receivables-table-body"></tbody></table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="applications" class="page hidden">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h2 class="text-xl font-bold mb-4">Solicitudes de Préstamos Pendientes</h2>
+                     <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Nombre Solicitante</th><th class="py-2 px-4 text-left">Monto Solicitado</th><th class="py-2 px-4 text-left">Teléfono</th><th class="py-2 px-4 text-left">Fecha</th><th class="py-2 px-4 text-left">Acciones</th></tr></thead><tbody id="applications-table-body"></tbody></table>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="cashbox" class="page hidden">
+                 <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Flujo de Caja</h2>
+                         <button id="open-expense-modal" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"><i class="fas fa-minus-circle mr-2"></i>Registrar Gasto</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Fecha</th><th class="py-2 px-4 text-left">Tipo</th><th class="py-2 px-4 text-left">Descripción</th><th class="py-2 px-4 text-right">Monto</th></tr></thead><tbody id="cashbox-table-body"></tbody></table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="loan-detail" class="page hidden">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold">Detalles del Préstamo <span id="loan-detail-id"></span></h2>
+                        <button id="back-to-loans" class="text-blue-600 hover:underline">Volver a Préstamos</button>
+                    </div>
+                    <div id="loan-detail-content" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                    <hr class="my-6">
+                    <h3 class="text-lg font-bold mb-4">Historial de Pagos</h3>
+                    <div id="loan-payments-history" class="overflow-x-auto"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="client-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Nuevo Cliente</h2><form id="client-form"><div class="mb-4"><label class="block text-gray-700">Nombre Completo</label><input type="text" id="client-name" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Cédula</label><input type="text" id="client-id-card" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Teléfono</label><input type="tel" id="client-phone" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4"><button type="button" id="close-client-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar Cliente</button></div></form></div></div>
+    <div id="loan-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h2 class="text-2xl font-bold mb-4">Calcular y Registrar Préstamo</h2><form id="loan-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="block text-gray-700">Cliente</label><select id="loan-client" class="w-full p-2 border rounded" required></select></div><div><label class="block text-gray-700">Monto del Préstamo (Capital)</label><input type="number" id="loan-principal" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Interés por Cuota (RD$)</label><input type="number" id="loan-interest-per-installment" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Número de Cuotas</label><input type="number" id="loan-term" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Modalidad de Pago</label><select id="loan-frequency" class="w-full p-2 border rounded"><option value="Diario">Diario</option><option value="Semanal">Semanal</option><option value="Quincenal">Quincenal</option><option value="Mensual">Mensual</option></select></div><div><label class="block text-gray-700">Fecha de Inicio</label><input type="date" id="loan-start-date" class="w-full p-2 border rounded" required></div></div><div class="mt-6"><button type="button" id="calculate-amortization" class="w-full bg-green-600 text-white px-4 py-2 rounded">Calcular Amortización</button></div><div id="amortization-preview" class="mt-4 hidden max-h-60 overflow-y-auto"></div><div class="flex justify-end space-x-4 mt-6"><button type="button" id="close-loan-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" id="save-loan" class="bg-blue-600 text-white px-4 py-2 rounded" disabled>Guardar Préstamo</button></div></form></div></div>
+    <div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Registrar Pago</h2><form id="payment-form"><input type="hidden" id="payment-loan-id"><input type="hidden" id="payment-installment-index"><div class="mb-4"><label class="block text-gray-700">Monto a Pagar</label><input type="number" step="0.01" id="payment-amount" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Mora (si aplica)</label><input type="number" step="0.01" id="payment-late-fee" class="w-full p-2 border rounded" value="0"></div><div class="mb-4"><label class="block text-gray-700">Fecha de Pago</label><input type="date" id="payment-date" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4"><button type="button" id="close-payment-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Confirmar Pago</button></div></form></div></div>
+    <div id="expense-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Registrar Gasto</h2><form id="expense-form"><div class="mb-4"><label class="block text-gray-700">Descripción del Gasto</label><input type="text" id="expense-description" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Monto</label><input type="number" step="0.01" id="expense-amount" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Fecha</label><input type="date" id="expense-date" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4"><button type="button" id="close-expense-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Guardar Gasto</button></div></form></div></div>
+    <div id="print-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl"><div class="print-area" id="print-content"></div><div class="flex justify-end space-x-4 mt-6 no-print"><button type="button" id="close-print-modal" class="bg-gray-300 px-4 py-2 rounded">Cerrar</button><button type="button" id="print-button" class="bg-blue-600 text-white px-4 py-2 rounded">Imprimir</button></div></div></div>
+
+<script type="module">
+    // --- SUPABASE SETUP ---
+    const supabaseUrl = 'https://iulaecdekmmgyuzywqdr.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml1bGFlY2Rla21tZ3l1enl3cWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzMDA1MDcsImV4cCI6MjA3Mzg3NjUwN30.UMfP3r56nonw_f8kgzGAGkcCguwNqqkO8lf3VEZ7qQs';
+    const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    // --- LOCAL DATA CACHE ---
+    let clients = [], loans = [], payments = [], applications = [], cashFlow = [];
+    let chart;
+    let amortizationData = null;
+
+    // --- LOADER ---
+    const loader = document.getElementById('loader');
+    const showLoader = (show) => {
+        loader.style.display = show ? 'flex' : 'none';
+    };
+    
+    // --- DATA FETCHING FUNCTIONS ---
+    async function fetchData() {
+        showLoader(true);
+        try {
+            const [clientsRes, loansRes, paymentsRes, applicationsRes, cashFlowRes] = await Promise.all([
+                supabase.from('clients').select('*').order('created_at', { ascending: false }),
+                supabase.from('loans').select('*, clients(id, name)').order('created_at', { ascending: false }),
+                supabase.from('payments').select('*').order('created_at', { ascending: false }),
+                supabase.from('applications').select('*').order('created_at', { ascending: false }),
+                supabase.from('cash_flow').select('*').order('transaction_date', { ascending: false })
+            ]);
+
+            if (clientsRes.error) throw clientsRes.error;
+            if (loansRes.error) throw loansRes.error;
+            if (paymentsRes.error) throw paymentsRes.error;
+            if (applicationsRes.error) throw applicationsRes.error;
+            if (cashFlowRes.error) throw cashFlowRes.error;
+
+            clients = clientsRes.data;
+            loans = loansRes.data;
+            payments = paymentsRes.data;
+            applications = applicationsRes.data;
+            cashFlow = cashFlowRes.data;
+
+            renderAll();
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            alert("No se pudieron cargar los datos. Revise la consola para más detalles.");
+        } finally {
+            showLoader(false);
+        }
+    }
+
+    // --- RENDER FUNCTIONS ---
+    function renderAll() {
+        renderClientsTable();
+        renderLoansTable();
+        renderLoanClientOptions();
+        renderDashboard();
+        renderReceivablesTable();
+        renderApplicationsTable();
+        renderCashboxTable();
+        updateNotifications();
+    }
+
+    const renderDashboard = () => {
+        const pendingCapital = loans.reduce((sum, loan) => sum + Number(loan.balance), 0);
+        const activeLoans = loans.filter(l => l.status === 'Activo').length;
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        const monthIncome = payments
+            .filter(p => new Date(p.payment_date) >= firstDayOfMonth)
+            .reduce((sum, p) => sum + Number(p.amount), 0);
+
+        const lateClients = loans.filter(loan => {
+            if (loan.status !== 'Activo' || !loan.amortization_schedule) return false;
+            const nextInstallment = loan.amortization_schedule.find(inst => inst.status === 'Pendiente');
+            return nextInstallment && new Date(nextInstallment.dueDate) < new Date();
+        }).length;
+        
+        document.getElementById('stat-pending-capital').textContent = formatCurrency(pendingCapital);
+        document.getElementById('stat-month-income').textContent = formatCurrency(monthIncome);
+        document.getElementById('stat-active-loans').textContent = activeLoans;
+        document.getElementById('stat-late-clients').textContent = lateClients;
+        
+        renderIncomeChart();
+    };
+    
+    const renderIncomeChart = () => {
+        const ctx = document.getElementById('incomeChart').getContext('2d');
+        const labels = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const data = Array(12).fill(0);
+        
+        payments.forEach(p => {
+            const month = new Date(p.payment_date).getMonth();
+            data[month] += Number(p.amount);
+        });
+
+        if (chart) chart.destroy();
+        
+        chart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'Ingresos por Mes', data: data, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
+    };
+
+    const updateNotifications = () => {
+        const list = document.getElementById('notifications-list');
+        list.innerHTML = '';
+        let hasNotifications = false;
+
+        loans.forEach(loan => {
+             if (loan.status !== 'Activo' || !loan.amortization_schedule) return;
+             const nextInstallment = loan.amortization_schedule.find(inst => inst.status === 'Pendiente');
+             if (nextInstallment && new Date(nextInstallment.dueDate) < new Date()) {
+                 hasNotifications = true;
+                 list.innerHTML += `<div class="flex items-start"><i class="fas fa-exclamation-triangle text-red-500 mt-1 mr-3"></i><div><p class="font-semibold text-sm">Préstamo Atrasado</p><p class="text-xs text-gray-600">${loan.clients.name} - Balance: ${formatCurrency(loan.balance)}</p></div></div>`;
+             }
+        });
+        if (!hasNotifications) list.innerHTML = '<p class="text-sm text-gray-500">No hay notificaciones.</p>';
+    };
+    
+    const renderClientsTable = () => {
+        const tbody = document.getElementById('clients-table-body');
+        tbody.innerHTML = clients.map(client => `<tr><td class="py-2 px-4 border-b">${client.name}</td><td class="py-2 px-4 border-b">${client.id_card}</td><td class="py-2 px-4 border-b">${client.phone}</td><td class="py-2 px-4 border-b"><button class="text-red-500 hover:text-red-700" onclick="deleteClient(${client.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+    };
+    
+    const renderLoansTable = () => {
+        const tbody = document.getElementById('loans-table-body');
+        tbody.innerHTML = loans.map(loan => {
+            const statusColor = loan.status === 'Activo' ? 'text-green-600' : 'text-gray-500';
+            return `<tr><td class="py-2 px-4 border-b">${loan.clients ? loan.clients.name : 'N/A'}</td><td class="py-2 px-4 border-b">${formatCurrency(loan.principal)}</td><td class="py-2 px-4 border-b">${formatCurrency(loan.balance)}</td><td class="py-2 px-4 border-b font-semibold ${statusColor}">${loan.status}</td><td class="py-2 px-4 border-b"><button class="text-blue-500 hover:text-blue-700 mr-2" onclick="viewLoanDetail(${loan.id})"><i class="fas fa-eye"></i></button></td></tr>`;
+        }).join('');
+    };
+
+    const renderReceivablesTable = () => {
+        const tbody = document.getElementById('receivables-table-body');
+        tbody.innerHTML = '';
+        loans.filter(l => l.status === 'Activo').forEach(loan => {
+            if (!loan.amortization_schedule) return;
+            const nextInstallment = loan.amortization_schedule.find(inst => inst.status === 'Pendiente');
+            const isLate = nextInstallment && new Date(nextInstallment.dueDate) < new Date();
+            tbody.innerHTML += `<tr><td class="py-2 px-4 border-b">${loan.clients.name}</td><td class="py-2 px-4 border-b">PR-${String(loan.id).padStart(4,'0')}</td><td class="py-2 px-4 border-b">${formatCurrency(loan.balance)}</td><td class="py-2 px-4 border-b">${nextInstallment ? formatDate(nextInstallment.dueDate) : 'N/A'}</td><td class="py-2 px-4 border-b font-semibold ${isLate ? 'text-red-500' : 'text-green-500'}">${isLate ? 'Atrasado' : 'Al día'}</td></tr>`;
+        });
+    };
+
+     const renderApplicationsTable = () => {
+        const tbody = document.getElementById('applications-table-body');
+        tbody.innerHTML = applications.map(app => `<tr><td class="py-2 px-4 border-b">${app.name}</td><td class="py-2 px-4 border-b">${formatCurrency(app.amount)}</td><td class="py-2 px-4 border-b">${app.phone}</td><td class="py-2 px-4 border-b">${formatDate(app.application_date)}</td><td class="py-2 px-4 border-b"><button class="bg-green-500 text-white px-2 py-1 rounded text-sm mr-2" onclick='approveApplication(${JSON.stringify(app)})'>Aprobar</button><button class="bg-red-500 text-white px-2 py-1 rounded text-sm" onclick="rejectApplication(${app.id})">Rechazar</button></td></tr>`).join('');
+    };
+
+    const renderCashboxTable = () => {
+        const tbody = document.getElementById('cashbox-table-body');
+        tbody.innerHTML = cashFlow.map(item => `<tr><td class="py-2 px-4 border-b">${formatDate(item.transaction_date)}</td><td class="py-2 px-4 border-b font-semibold ${item.type === 'Ingreso' ? 'text-green-600' : 'text-red-600'}">${item.type}</td><td class="py-2 px-4 border-b">${item.description}</td><td class="py-2 px-4 border-b text-right">${formatCurrency(item.amount)}</td></tr>`).join('');
+    };
+    
+    const renderLoanClientOptions = () => {
+        const select = document.getElementById('loan-client');
+        select.innerHTML = '<option value="">Seleccione un cliente</option>' + clients.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    };
+
+    window.viewLoanDetail = (loanId) => {
+        const loan = loans.find(l => l.id === loanId);
+        if (!loan) return;
+        
+        document.getElementById('loan-detail-id').textContent = `PR-${String(loan.id).padStart(4,'0')}`;
+
+        const content = document.getElementById('loan-detail-content');
+        content.innerHTML = `<div><h3 class="text-lg font-bold mb-2">Información General</h3><p><strong>Cliente:</strong> ${loan.clients.name}</p><p><strong>Monto Prestado:</strong> ${formatCurrency(loan.principal)}</p><p><strong>Balance Actual:</strong> ${formatCurrency(loan.balance)}</p><p><strong>Interés por cuota:</strong> ${formatCurrency(loan.interest_per_installment)}</p><p><strong>Modalidad:</strong> ${loan.frequency}</p><p><strong>Estado:</strong> ${loan.status}</p><div class="mt-4 space-x-2"><button class="bg-blue-500 text-white px-3 py-1 rounded text-sm" onclick="generatePromissoryNote(${loan.id})">Pagaré Notarial</button><button class="bg-gray-500 text-white px-3 py-1 rounded text-sm" onclick="printPaymentHistory(${loan.id})">Historial de Pagos</button></div></div><div><h3 class="text-lg font-bold mb-2">Plan de Amortización</h3><div class="max-h-80 overflow-y-auto border rounded"><table class="min-w-full text-sm"><thead class="bg-gray-100"><tr><th class="p-2 text-left">#</th><th class="p-2 text-left">Fecha</th><th class="p-2 text-left">Cuota</th><th class="p-2 text-left">Estado</th><th class="p-2 text-left">Acción</th></tr></thead><tbody>${loan.amortization_schedule.map((inst, index) => `<tr class="${inst.status === 'Pagado' ? 'bg-green-50' : ''}"><td class="p-2 border-t">${inst.installment}</td><td class="p-2 border-t">${formatDate(inst.dueDate)}</td><td class="p-2 border-t">${formatCurrency(inst.payment)}</td><td class="p-2 border-t font-semibold ${inst.status === 'Pagado' ? 'text-green-600' : 'text-gray-600'}">${inst.status}</td><td class="p-2 border-t">${inst.status === 'Pendiente' ? `<button class="bg-green-500 text-white px-2 py-1 rounded text-xs" onclick="openPaymentModal(${loan.id}, ${index})">Pagar</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>`;
+
+        renderPaymentHistory(loanId);
+        showPage('loan-detail');
+    };
+    
+    const renderPaymentHistory = (loanId) => {
+        const container = document.getElementById('loan-payments-history');
+        const loanPayments = payments.filter(p => p.loan_id === loanId);
+        if (loanPayments.length === 0) {
+            container.innerHTML = '<p class="text-gray-500">No hay pagos registrados para este préstamo.</p>'; return;
+        }
+        container.innerHTML = `<table class="min-w-full text-sm"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Fecha</th><th class="p-2 text-left">Monto Pagado</th><th class="p-2 text-left">Mora</th><th class="p-2 text-left">Total</th><th class="p-2 text-left">Acción</th></tr></thead><tbody>${loanPayments.map(p => `<tr><td class="p-2 border-t">${formatDate(p.payment_date)}</td><td class="p-2 border-t">${formatCurrency(Number(p.amount) - Number(p.late_fee))}</td><td class="p-2 border-t">${formatCurrency(p.late_fee)}</td><td class="p-2 border-t font-bold">${formatCurrency(p.amount)}</td><td class="p-2 border-t"><button class="text-blue-500" onclick="generateReceipt(${p.id})"><i class="fas fa-receipt"></i> Recibo</button></td></tr>`).join('')}</tbody></table>`;
+    };
+
+    // --- CRUD OPERATIONS ---
+    document.getElementById('client-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        showLoader(true);
+        const newClient = {
+            name: document.getElementById('client-name').value,
+            id_card: document.getElementById('client-id-card').value,
+            phone: document.getElementById('client-phone').value,
+        };
+        const { error } = await supabase.from('clients').insert([newClient]);
+        if (error) {
+            console.error(error); alert("Error al guardar cliente.");
+        } else {
+            this.reset();
+            closeModal('client-modal');
+            await fetchData();
+        }
+        showLoader(false);
+    });
+
+    document.getElementById('loan-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        if (!amortizationData) { alert('Primero debe calcular la amortización.'); return; }
+        showLoader(true);
+        
+        const newLoan = {
+            client_id: parseInt(document.getElementById('loan-client').value),
+            principal: amortizationData.principal,
+            balance: amortizationData.principal,
+            interest_per_installment: amortizationData.interestPerInstallment,
+            term: amortizationData.term,
+            frequency: amortizationData.frequency,
+            issue_date: new Date().toISOString().split('T')[0],
+            status: 'Activo',
+            amortization_schedule: amortizationData.schedule,
+        };
+        
+        const { error } = await supabase.from('loans').insert([newLoan]);
+        
+        if (error) {
+            console.error(error); alert("Error al guardar préstamo.");
+            showLoader(false);
+            return;
+        }
+        
+        const clientName = clients.find(c => c.id === newLoan.client_id).name;
+        await supabase.from('cash_flow').insert([{
+            transaction_date: newLoan.issue_date,
+            type: 'Salida',
+            description: `Desembolso préstamo a ${clientName}`,
+            amount: newLoan.principal
+        }]);
+
+        this.reset();
+        closeModal('loan-modal');
+        document.getElementById('amortization-preview').classList.add('hidden');
+        document.getElementById('save-loan').disabled = true;
+        amortizationData = null;
+        await fetchData();
+        showLoader(false);
+    });
+    
+    document.getElementById('payment-form').addEventListener('submit', async function(e){
+        e.preventDefault();
+        showLoader(true);
+        const loanId = parseInt(document.getElementById('payment-loan-id').value);
+        const installmentIndex = parseInt(document.getElementById('payment-installment-index').value);
+        const amount = parseFloat(document.getElementById('payment-amount').value);
+        const lateFee = parseFloat(document.getElementById('payment-late-fee').value);
+        const date = document.getElementById('payment-date').value;
+
+        const loan = loans.find(l => l.id === loanId);
+        const installment = loan.amortization_schedule[installmentIndex];
+        
+        // Prepare loan update
+        const updatedSchedule = [...loan.amortization_schedule];
+        updatedSchedule[installmentIndex].status = 'Pagado';
+        const newBalance = Number(loan.balance) - Number(installment.principal);
+        const newStatus = newBalance < 0.01 ? 'Pagado' : loan.status;
+
+        const { error: loanError } = await supabase.from('loans').update({
+            balance: newBalance,
+            status: newStatus,
+            amortization_schedule: updatedSchedule
+        }).eq('id', loanId);
+
+        if(loanError) { console.error(loanError); alert("Error al actualizar el préstamo."); showLoader(false); return; }
+
+        // Prepare payment insert
+        const newPayment = {
+            loan_id: loanId,
+            installment_number: installment.installment,
+            amount: amount + lateFee,
+            late_fee: lateFee,
+            payment_date: date,
+        };
+        const { error: paymentError } = await supabase.from('payments').insert([newPayment]);
+        if(paymentError) { console.error(paymentError); alert("Error al registrar el pago."); showLoader(false); return; }
+
+        // Prepare cashflow insert
+        const clientName = loan.clients.name;
+        await supabase.from('cash_flow').insert([{
+            transaction_date: date,
+            type: 'Ingreso',
+            description: `Pago de ${clientName} (Cuota ${installment.installment})`,
+            amount: newPayment.amount
+        }]);
+        
+        this.reset();
+        closeModal('payment-modal');
+        await fetchData();
+        viewLoanDetail(loanId); // Re-render detail view with fresh data
+        showLoader(false);
+    });
+
+    document.getElementById('expense-form').addEventListener('submit', async function(e){
+        e.preventDefault();
+        showLoader(true);
+        const newExpense = {
+            description: document.getElementById('expense-description').value,
+            amount: parseFloat(document.getElementById('expense-amount').value),
+            transaction_date: document.getElementById('expense-date').value,
+            type: 'Gasto'
+        };
+        
+        const { error } = await supabase.from('cash_flow').insert([newExpense]);
+        if (error) { console.error(error); alert("Error guardando el gasto."); }
+        else {
+            this.reset();
+            closeModal('expense-modal');
+            await fetchData();
+        }
+        showLoader(false);
+    });
+    
+    window.deleteClient = async (clientId) => {
+        if(confirm('¿Está seguro de que desea eliminar este cliente? Esta acción eliminará también sus préstamos y pagos asociados.')) {
+            showLoader(true);
+            const { error } = await supabase.from('clients').delete().eq('id', clientId);
+            if (error) { console.error(error); alert("Error al eliminar cliente."); }
+            await fetchData();
+            showLoader(false);
+        }
+    };
+    
+    window.approveApplication = async (app) => {
+        showLoader(true);
+        // Create new client
+        const { data, error } = await supabase.from('clients').insert([{ name: app.name, phone: app.phone, id_card: 'N/A' }]).select();
+        if (error) { console.error(error); alert("Error al crear el cliente desde la solicitud."); showLoader(false); return; }
+        
+        // Delete application
+        const newClient = data[0];
+        const { error: deleteError } = await supabase.from('applications').delete().eq('id', app.id);
+        if (deleteError) { console.error(deleteError); alert("Error al eliminar la solicitud."); showLoader(false); return; }
+
+        await fetchData();
+        
+        openModal('loan-modal');
+        document.getElementById('loan-client').value = newClient.id;
+        document.getElementById('loan-principal').value = app.amount;
+        showLoader(false);
+    };
+
+    window.rejectApplication = async (appId) => {
+        showLoader(true);
+        const { error } = await supabase.from('applications').delete().eq('id', appId);
+        if(error) { console.error(error); alert("Error al rechazar la solicitud."); }
+        await fetchData();
+        showLoader(false);
+    };
+    
+    // --- UTILITY & CALCULATION FUNCTIONS ---
+    document.getElementById('calculate-amortization').addEventListener('click', () => {
+        const principal = parseFloat(document.getElementById('loan-principal').value);
+        const interestPerInstallment = parseFloat(document.getElementById('loan-interest-per-installment').value);
+        const term = parseInt(document.getElementById('loan-term').value);
+        const frequency = document.getElementById('loan-frequency').value;
+        const startDate = new Date(document.getElementById('loan-start-date').value + 'T00:00:00');
+
+        if (isNaN(principal) || isNaN(interestPerInstallment) || isNaN(term) || !document.getElementById('loan-start-date').value) {
+            alert('Por favor, complete todos los campos para el cálculo.'); return;
+        }
+        
+        amortizationData = calculateAmortizationSchedule(principal, interestPerInstallment, term, frequency, startDate);
+        
+        const previewDiv = document.getElementById('amortization-preview');
+        previewDiv.innerHTML = `<p class="font-bold">Cuota ${frequency}: ${formatCurrency(amortizationData.installmentPayment)}</p><p>Total a Pagar: ${formatCurrency(amortizationData.totalPayment)}</p><table class="min-w-full text-xs mt-2"><thead><tr><th>#</th><th>Fecha</th><th>Cuota</th><th>Interés</th><th>Capital</th></tr></thead><tbody>${amortizationData.schedule.map(s => `<tr><td>${s.installment}</td><td>${formatDate(s.dueDate)}</td><td>${formatCurrency(s.payment)}</td><td>${formatCurrency(s.interest)}</td><td>${formatCurrency(s.principal)}</td></tr>`).join('')}</tbody></table>`;
+        previewDiv.classList.remove('hidden');
+        document.getElementById('save-loan').disabled = false;
+    });
+
+    function calculateAmortizationSchedule(principal, interestPerInstallment, term, frequency, startDate) {
+        const periods = term; const totalInterest = interestPerInstallment * periods; const totalLoanAmount = principal + totalInterest; const installmentPayment = totalLoanAmount / periods; const principalPerInstallment = principal / periods;
+        let balance = principal; const schedule = []; let currentDate = new Date(startDate);
+        for (let i = 1; i <= periods; i++) {
+            balance -= principalPerInstallment;
+            switch(frequency) { case 'Diario': currentDate.setDate(currentDate.getDate() + 1); break; case 'Semanal': currentDate.setDate(currentDate.getDate() + 7); break; case 'Quincenal': currentDate.setDate(currentDate.getDate() + 15); break; case 'Mensual': currentDate.setMonth(currentDate.getMonth() + 1); break; }
+            schedule.push({ installment: i, dueDate: new Date(currentDate), payment: installmentPayment, principal: principalPerInstallment, interest: interestPerInstallment, balance: balance < 0.01 ? 0 : balance, status: 'Pendiente' });
+        }
+        return { principal, interestPerInstallment, term, frequency, installmentPayment, totalPayment: totalLoanAmount, schedule };
+    }
+
+    const formatCurrency = (num) => new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(num || 0);
+    const formatDate = (dateString) => { const date = new Date(dateString); return date.toLocaleDateString('es-DO', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }); };
+    
+    // --- NAVIGATION AND MODAL HANDLING ---
+    const pages = document.querySelectorAll('.page');
+    const navLinks = document.querySelectorAll('.nav-link');
+    const pageTitle = document.getElementById('page-title');
+    const showPage = (pageId) => {
+        pages.forEach(page => page.classList.add('hidden'));
+        document.getElementById(pageId).classList.remove('hidden');
+        const link = document.querySelector(`a[href="#${pageId}"]`);
+        if (link) { pageTitle.textContent = link.textContent.trim(); navLinks.forEach(l => l.classList.remove('bg-gray-700')); link.classList.add('bg-gray-700'); }
+        else if (pageId === 'loan-detail') { pageTitle.textContent = 'Detalle de Préstamo'; }
+    };
+    navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); const pageId = link.getAttribute('href').substring(1); showPage(pageId); }); });
+    document.getElementById('back-to-loans').addEventListener('click', () => showPage('loans'));
+    const openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden');
+    const closeModal = (modalId) => document.getElementById(modalId).classList.add('hidden');
+    document.getElementById('open-client-modal').addEventListener('click', () => openModal('client-modal'));
+    document.getElementById('close-client-modal').addEventListener('click', () => closeModal('client-modal'));
+    document.getElementById('open-loan-modal').addEventListener('click', () => openModal('loan-modal'));
+    document.getElementById('close-loan-modal').addEventListener('click', () => { closeModal('loan-modal'); document.getElementById('amortization-preview').classList.add('hidden'); document.getElementById('save-loan').disabled = true; amortizationData = null; });
+    window.openPaymentModal = (loanId, installmentIndex) => { const loan = loans.find(l => l.id === loanId); const installment = loan.amortization_schedule[installmentIndex]; document.getElementById('payment-loan-id').value = loanId; document.getElementById('payment-installment-index').value = installmentIndex; document.getElementById('payment-amount').value = installment.payment.toFixed(2); document.getElementById('payment-date').value = new Date().toISOString().split('T')[0]; openModal('payment-modal'); };
+    document.getElementById('close-payment-modal').addEventListener('click', () => closeModal('payment-modal'));
+    document.getElementById('open-expense-modal').addEventListener('click', () => { document.getElementById('expense-date').value = new Date().toISOString().split('T')[0]; openModal('expense-modal') });
+    document.getElementById('close-expense-modal').addEventListener('click', () => closeModal('expense-modal'));
+    const sidebar = document.getElementById('sidebar');
+    document.getElementById('menu-button').addEventListener('click', () => { sidebar.classList.toggle('-translate-x-full'); });
+
+    // --- PRINTING FUNCTIONS ---
+    window.generateReceipt = (paymentId) => { const payment = payments.find(p => p.id === paymentId); if (!payment) return; const loan = loans.find(l => l.id === payment.loan_id); const client = clients.find(c => c.id === loan.client_id); const content = `<div class="p-4 border border-gray-300"><h3 class="text-xl font-bold text-center mb-4">Recibo de Pago</h3><div class="flex justify-between mb-2"><span><strong>Fecha:</strong> ${formatDate(payment.payment_date)}</span><span><strong>Recibo No:</strong> ${String(payment.id).padStart(5,'0')}</span></div><p><strong>Recibido de:</strong> ${client.name}</p><p><strong>Préstamo No:</strong> PR-${String(loan.id).padStart(4,'0')}</p><hr class="my-3"><div class="flex justify-between font-semibold"><span>Pago Cuota #${payment.installment_number}:</span><span>${formatCurrency(Number(payment.amount) - Number(payment.late_fee))}</span></div><div class="flex justify-between font-semibold"><span>Mora:</span><span>${formatCurrency(payment.late_fee)}</span></div><hr class="my-2"><div class="flex justify-between font-bold text-lg"><span>TOTAL PAGADO:</span><span>${formatCurrency(payment.amount)}</span></div><hr class="my-3"><p class="text-sm"><strong>Balance restante del préstamo:</strong> ${formatCurrency(loan.balance)}</p><div class="mt-12 text-center"><p class="border-t-2 w-1/2 mx-auto pt-2">Firma Autorizada</p></div></div>`; document.getElementById('print-content').innerHTML = content; openModal('print-modal'); };
+    window.generatePromissoryNote = (loanId) => { const loan = loans.find(l => l.id === loanId); const client = clients.find(c => c.id === loan.client_id); const totalAmount = Number(loan.principal) + (Number(loan.interest_per_installment) * loan.term); const content = `<div class="p-4"><h3 class="text-2xl font-bold text-center mb-6">PAGARÉ NOTARIAL</h3><p class="text-justify leading-relaxed">Yo, <strong>${client.name.toUpperCase()}</strong>, mayor de edad, de nacionalidad dominicana, portador(a) de la Cédula de Identidad y Electoral No. ${client.id_card}, domiciliado(a) y residente en [Dirección del Cliente], por medio del presente acto, DEBO Y PAGARÉ... la suma de <strong>${formatCurrency(totalAmount)}</strong>... en ${loan.term} cuotas ${loan.frequency.toLowerCase()}s... de ${formatCurrency(loan.amortization_schedule[0].payment)}...</p></div>`; document.getElementById('print-content').innerHTML = content; openModal('print-modal'); };
+    window.printPaymentHistory = (loanId) => { const loan = loans.find(l => l.id === loanId); const client = clients.find(c => c.id === loan.client_id); const loanPayments = payments.filter(p => p.loan_id === loanId); let paymentsHtml = loanPayments.length > 0 ? loanPayments.map(p => `<tr><td class="p-1 border">${formatDate(p.payment_date)}</td><td class="p-1 border text-right">${formatCurrency(p.amount)}</td><td class="p-1 border text-right">${formatCurrency(p.late_fee)}</td></tr>`).join('') : '<tr><td colspan="3" class="p-1 border text-center">Sin pagos</td></tr>'; const content = `<div class="p-4"><h3 class="text-xl font-bold text-center mb-4">Historial de Pagos</h3><p><strong>Cliente:</strong> ${client.name}</p><p><strong>Préstamo No:</strong> PR-${String(loan.id).padStart(4,'0')}</p><hr class="my-2"><table class="w-full text-sm border-collapse"><thead><tr><th class="p-1 border bg-gray-100 text-left">Fecha</th><th class="p-1 border bg-gray-100 text-right">Monto</th><th class="p-1 border bg-gray-100 text-right">Mora</th></tr></thead><tbody>${paymentsHtml}</tbody></table></div>`; document.getElementById('print-content').innerHTML = content; openModal('print-modal'); };
+    document.getElementById('close-print-modal').addEventListener('click', () => closeModal('print-modal'));
+    document.getElementById('print-button').addEventListener('click', () => window.print());
+
+
+    // --- INITIALIZATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Asigna los handlers globales a window para que los botones HTML puedan llamarlos
+        window.deleteClient = deleteClient;
+        window.approveApplication = approveApplication;
+        window.rejectApplication = rejectApplication;
+        window.viewLoanDetail = viewLoanDetail;
+        window.openPaymentModal = openPaymentModal;
+        window.generateReceipt = generateReceipt;
+        window.generatePromissoryNote = generatePromissoryNote;
+        window.printPaymentHistory = printPaymentHistory;
+
+        fetchData(); // Carga inicial de datos
+    });
+</script>
+</body>
+</html>
+
