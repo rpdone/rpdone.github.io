@@ -26,12 +26,69 @@
         }
         .sidebar { transition: transform 0.3s ease-in-out; }
         .main-content { transition: margin-left 0.3s ease-in-out; }
+        
+        /* Estilos de Impresión */
         @media print {
             body * { visibility: hidden; }
             .print-area, .print-area * { visibility: visible; }
-            .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+            .print-area { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; }
             .no-print { display: none; }
+
+            @page {
+                size: letter;
+                margin: 1in;
+            }
+            
+            /* Estilos para Rollo POS 35mm */
+            .print-pos-roll {
+                font-family: 'Courier New', monospace;
+                font-size: 8pt;
+                line-height: 1.2;
+                width: 35mm;
+                padding: 2mm;
+            }
+            .print-pos-roll h3 { font-size: 10pt; }
+            .print-pos-roll p { margin-bottom: 5px; }
+            .print-pos-roll .signature-line {
+                border-top: 1px solid black;
+                padding-top: 2px;
+                margin-top: 20px;
+                text-align: center;
+            }
+            
+            /* Estilos para Rollo POS 57mm */
+            .print-pos-roll-57mm {
+                font-family: 'Courier New', monospace;
+                font-size: 9pt;
+                line-height: 1.2;
+                width: 57mm;
+                padding: 2mm;
+            }
+             .print-pos-roll-57mm h3 { font-size: 11pt; font-weight: bold; text-align: center; margin-bottom: 3mm;}
+             .print-pos-roll-57mm p { margin-bottom: 4px; }
+             .print-pos-roll-57mm span { display: block; }
+             .print-pos-roll-57mm table { width: 100%; font-size: 8pt; }
+             .print-pos-roll-57mm th, .print-pos-roll-57mm td { text-align: left; padding: 1px; }
+
+
+            /* Estilos para Papel Carta */
+            .print-letter {
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
+                line-height: 1.5;
+                width: 100%;
+                padding: 1in;
+            }
+            .print-letter h3 { font-size: 16pt; text-align: center; margin-bottom: 24pt; font-weight: bold; text-decoration: underline; }
+            .print-letter p { text-align: justify; margin-bottom: 12pt; }
+            .print-letter .signatures { display: flex; justify-content: space-around; margin-top: 50pt; }
+            .print-letter .signature-block { text-align: center; }
+            .print-letter .signature-line { border-top: 1px solid black; padding-top: 5px; width: 200px; }
+            .print-letter table { width: 100%; border-collapse: collapse; margin-top: 20pt; font-size: 10pt; }
+            .print-letter th, .print-letter td { border: 1px solid #ccc; padding: 4px 8px; }
+            .print-letter th { background-color: #f2f2f2; }
         }
+
         .chart-container { height: 350px; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -67,13 +124,16 @@
 </head>
 <body class="flex h-screen overflow-hidden">
 
+    <!-- Overlay para menú móvil -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
+    
     <!-- Loader -->
     <div id="loader">
         <div class="spinner"></div>
     </div>
 
     <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar bg-gray-800 text-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0">
+    <aside id="sidebar" class="sidebar bg-gray-800 text-white w-64 space-y-6 py-7 px-2 absolute inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 z-30">
         <a href="#" class="text-white flex items-center space-x-2 px-4">
             <i class="fas fa-hand-holding-dollar fa-2x"></i>
             <span class="text-2xl font-extrabold">PrestamistaAPP</span>
@@ -115,11 +175,11 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-4 sm:p-6">
             
             <!-- Vistas de la Aplicación -->
             <div id="dashboard" class="page">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
                     <div class="bg-white p-6 rounded-lg shadow-md">
                         <h3 class="text-gray-500 text-sm font-medium">Capital Pendiente</h3>
                         <p class="text-3xl font-bold text-blue-600" id="stat-pending-capital">$0.00</p>
@@ -136,6 +196,11 @@
                         <h3 class="text-gray-500 text-sm font-medium">Clientes con Mora</h3>
                         <p class="text-3xl font-bold text-red-600" id="stat-late-clients">0</p>
                     </div>
+                    <!-- Tarjeta de cobros próximos -->
+                    <div class="bg-white p-6 rounded-lg shadow-md">
+                        <h3 class="text-gray-500 text-sm font-medium">A cobrar (Próx. 7 días)</h3>
+                        <p class="text-3xl font-bold text-purple-600" id="stat-upcoming-collections">$0.00</p>
+                    </div>
                 </div>
                 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -144,7 +209,7 @@
                         <div class="chart-container"><canvas id="incomeChart"></canvas></div>
                     </div>
                     <div class="bg-white p-6 rounded-lg shadow-md">
-                        <h3 class="font-semibold mb-4">Notificaciones</h3>
+                        <h3 class="font-semibold mb-4">Notificaciones y Pagos Próximos</h3>
                         <div id="notifications-list" class="space-y-4"></div>
                     </div>
                 </div>
@@ -152,9 +217,9 @@
             
             <div id="loans" class="page hidden">
                  <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h2 class="text-xl font-bold">Listado de Préstamos</h2>
-                        <button id="open-loan-modal" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"><i class="fas fa-plus mr-2"></i>Nuevo Préstamo</button>
+                        <button id="open-loan-modal" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"><i class="fas fa-plus mr-2"></i>Nuevo Préstamo</button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Cliente</th><th class="py-2 px-4 text-left">Monto</th><th class="py-2 px-4 text-left">Balance</th><th class="py-2 px-4 text-left">Estado</th><th class="py-2 px-4 text-left">Acciones</th></tr></thead><tbody id="loans-table-body"></tbody></table>
@@ -164,9 +229,9 @@
             
             <div id="clients" class="page hidden">
                  <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h2 class="text-xl font-bold">Listado de Clientes</h2>
-                        <button id="open-client-modal" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"><i class="fas fa-user-plus mr-2"></i>Nuevo Cliente</button>
+                        <button id="open-client-modal" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition w-full sm:w-auto"><i class="fas fa-user-plus mr-2"></i>Nuevo Cliente</button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Nombre</th><th class="py-2 px-4 text-left">Cédula</th><th class="py-2 px-4 text-left">Teléfono</th><th class="py-2 px-4 text-left">Acciones</th></tr></thead><tbody id="clients-table-body"></tbody></table>
@@ -194,9 +259,9 @@
             
             <div id="cashbox" class="page hidden">
                  <div class="bg-white p-6 rounded-lg shadow-md">
-                    <div class="flex justify-between items-center mb-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <h2 class="text-xl font-bold">Flujo de Caja</h2>
-                         <button id="open-expense-modal" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition"><i class="fas fa-minus-circle mr-2"></i>Registrar Gasto</button>
+                         <button id="open-expense-modal" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition w-full sm:w-auto"><i class="fas fa-minus-circle mr-2"></i>Registrar Gasto</button>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full bg-white"><thead class="bg-gray-200"><tr><th class="py-2 px-4 text-left">Fecha</th><th class="py-2 px-4 text-left">Tipo</th><th class="py-2 px-4 text-left">Descripción</th><th class="py-2 px-4 text-right">Monto</th></tr></thead><tbody id="cashbox-table-body"></tbody></table>
@@ -220,11 +285,11 @@
     </div>
 
     <!-- Modals -->
-    <div id="client-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Nuevo Cliente</h2><form id="client-form"><div class="mb-4"><label class="block text-gray-700">Nombre Completo</label><input type="text" id="client-name" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Cédula</label><input type="text" id="client-id-card" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Teléfono</label><input type="tel" id="client-phone" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4"><button type="button" id="close-client-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar Cliente</button></div></form></div></div>
-    <div id="loan-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-lg"><h2 class="text-2xl font-bold mb-4">Calcular y Registrar Préstamo</h2><form id="loan-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="block text-gray-700">Cliente</label><select id="loan-client" class="w-full p-2 border rounded" required></select></div><div><label class="block text-gray-700">Monto del Préstamo (Capital)</label><input type="number" id="loan-principal" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Interés por Cuota (RD$)</label><input type="number" id="loan-interest-per-installment" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Número de Cuotas</label><input type="number" id="loan-term" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Modalidad de Pago</label><select id="loan-frequency" class="w-full p-2 border rounded"><option value="Diario">Diario</option><option value="Semanal">Semanal</option><option value="Quincenal">Quincenal</option><option value="Mensual">Mensual</option></select></div><div><label class="block text-gray-700">Fecha de Inicio</label><input type="date" id="loan-start-date" class="w-full p-2 border rounded" required></div></div><div class="mt-6"><button type="button" id="calculate-amortization" class="w-full bg-green-600 text-white px-4 py-2 rounded">Calcular Amortización</button></div><div id="amortization-preview" class="mt-4 hidden max-h-60 overflow-y-auto"></div><div class="flex justify-end space-x-4 mt-6"><button type="button" id="close-loan-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" id="save-loan" class="bg-blue-600 text-white px-4 py-2 rounded" disabled>Guardar Préstamo</button></div></form></div></div>
-    <div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Registrar Pago</h2><form id="payment-form"><input type="hidden" id="payment-loan-id"><input type="hidden" id="payment-installment-index"><div class="mb-4"><label class="block text-gray-700">Monto a Pagar</label><input type="number" step="0.01" id="payment-amount" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Mora (si aplica)</label><input type="number" step="0.01" id="payment-late-fee" class="w-full p-2 border rounded" value="0"></div><div class="mb-4"><label class="block text-gray-700">Fecha de Pago</label><input type="date" id="payment-date" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4"><button type="button" id="close-payment-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Confirmar Pago</button></div></form></div></div>
-    <div id="expense-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Registrar Gasto</h2><form id="expense-form"><div class="mb-4"><label class="block text-gray-700">Descripción del Gasto</label><input type="text" id="expense-description" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Monto</label><input type="number" step="0.01" id="expense-amount" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Fecha</label><input type="date" id="expense-date" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4"><button type="button" id="close-expense-modal" class="bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Guardar Gasto</button></div></form></div></div>
-    <div id="print-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50"><div class="bg-white p-8 rounded-lg shadow-xl w-full max-w-2xl"><div class="print-area" id="print-content"></div><div class="flex justify-end space-x-4 mt-6 no-print"><button type="button" id="close-print-modal" class="bg-gray-300 px-4 py-2 rounded">Cerrar</button><button type="button" id="print-button" class="bg-blue-600 text-white px-4 py-2 rounded">Imprimir</button></div></div></div>
+    <div id="client-modal" class="modal-container fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto"><div class="modal-content bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"><h2 class="text-2xl font-bold mb-4">Nuevo Cliente</h2><form id="client-form"><div class="mb-4"><label class="block text-gray-700">Nombre Completo</label><input type="text" id="client-name" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Cédula</label><input type="text" id="client-id-card" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Teléfono</label><input type="tel" id="client-phone" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4 mt-6"><button type="button" class="close-modal-btn bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Guardar Cliente</button></div></form></div></div>
+    <div id="loan-modal" class="modal-container fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto"><div class="modal-content bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto"><h2 class="text-2xl font-bold mb-4">Calcular y Registrar Préstamo</h2><form id="loan-form"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="block text-gray-700">Cliente</label><select id="loan-client" class="w-full p-2 border rounded" required></select></div><div><label class="block text-gray-700">Monto del Préstamo (Capital)</label><input type="number" id="loan-principal" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Interés por Cuota (RD$)</label><input type="number" id="loan-interest-per-installment" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Número de Cuotas</label><input type="number" id="loan-term" class="w-full p-2 border rounded" required></div><div><label class="block text-gray-700">Modalidad de Pago</label><select id="loan-frequency" class="w-full p-2 border rounded"><option value="Diario">Diario</option><option value="Semanal">Semanal</option><option value="Quincenal">Quincenal</option><option value="Mensual">Mensual</option></select></div><div><label class="block text-gray-700">Fecha de Inicio</label><input type="date" id="loan-start-date" class="w-full p-2 border rounded" required></div></div><div class="mt-6"><button type="button" id="calculate-amortization" class="w-full bg-green-600 text-white px-4 py-2 rounded">Calcular Amortización</button></div><div id="amortization-preview" class="mt-4 hidden max-h-60 overflow-y-auto"></div><div class="flex justify-end space-x-4 mt-6"><button type="button" class="close-modal-btn bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" id="save-loan" class="bg-blue-600 text-white px-4 py-2 rounded" disabled>Guardar Préstamo</button></div></form></div></div>
+    <div id="payment-modal" class="modal-container fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto"><div class="modal-content bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"><h2 class="text-2xl font-bold mb-4">Registrar Pago</h2><form id="payment-form"><input type="hidden" id="payment-loan-id"><input type="hidden" id="payment-installment-index"><div class="mb-4"><label class="block text-gray-700">Monto a Pagar</label><input type="number" step="0.01" id="payment-amount" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Mora (si aplica)</label><input type="number" step="0.01" id="payment-late-fee" class="w-full p-2 border rounded" value="0"></div><div class="mb-4"><label class="block text-gray-700">Fecha de Pago</label><input type="date" id="payment-date" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4 mt-6"><button type="button" class="close-modal-btn bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-green-600 text-white px-4 py-2 rounded">Confirmar Pago</button></div></form></div></div>
+    <div id="expense-modal" class="modal-container fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto"><div class="modal-content bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"><h2 class="text-2xl font-bold mb-4">Registrar Gasto</h2><form id="expense-form"><div class="mb-4"><label class="block text-gray-700">Descripción del Gasto</label><input type="text" id="expense-description" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Monto</label><input type="number" step="0.01" id="expense-amount" class="w-full p-2 border rounded" required></div><div class="mb-4"><label class="block text-gray-700">Fecha</label><input type="date" id="expense-date" class="w-full p-2 border rounded" required></div><div class="flex justify-end space-x-4 mt-6"><button type="button" class="close-modal-btn bg-gray-300 px-4 py-2 rounded">Cancelar</button><button type="submit" class="bg-red-500 text-white px-4 py-2 rounded">Guardar Gasto</button></div></form></div></div>
+    <div id="print-modal" class="modal-container fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto"><div class="modal-content bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"><div class="print-area flex-grow overflow-y-auto" id="print-content"></div><div class="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-4 mt-6 no-print"><button type="button" class="close-modal-btn bg-gray-300 px-4 py-2 rounded">Cerrar</button><button type="button" id="print-pos-57mm-button" class="bg-teal-600 text-white px-4 py-2 rounded hidden"><i class="fas fa-receipt mr-2"></i>Imprimir Rollo (57mm)</button><button type="button" id="print-pos-button" class="bg-blue-600 text-white px-4 py-2 rounded"><i class="fas fa-receipt mr-2"></i>Imprimir Rollo (35mm)</button><button type="button" id="print-letter-button" class="bg-blue-600 text-white px-4 py-2 rounded"><i class="fas fa-file-alt mr-2"></i>Imprimir Carta</button><button type="button" id="print-generic-button" class="bg-blue-600 text-white px-4 py-2 rounded hidden"><i class="fas fa-print mr-2"></i>Imprimir Documento</button></div></div></div>
 
 <script type="module">
     // --- SUPABASE SETUP ---
@@ -285,7 +350,6 @@
         renderReceivablesTable();
         renderApplicationsTable();
         renderCashboxTable();
-        updateNotifications();
     }
 
     const renderDashboard = () => {
@@ -310,6 +374,7 @@
         document.getElementById('stat-late-clients').textContent = lateClients;
         
         renderIncomeChart();
+        renderNotificationsAndUpcomingPayments();
     };
     
     const renderIncomeChart = () => {
@@ -327,20 +392,53 @@
         chart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'Ingresos por Mes', data: data, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } });
     };
 
-    const updateNotifications = () => {
+    const renderNotificationsAndUpcomingPayments = () => {
         const list = document.getElementById('notifications-list');
         list.innerHTML = '';
-        let hasNotifications = false;
-
+        let hasContent = false;
+        
+        // Pagos atrasados
         loans.forEach(loan => {
              if (loan.status !== 'Activo' || !loan.amortization_schedule) return;
              const nextInstallment = loan.amortization_schedule.find(inst => inst.status === 'Pendiente');
              if (nextInstallment && new Date(nextInstallment.dueDate) < new Date()) {
-                 hasNotifications = true;
+                 hasContent = true;
                  list.innerHTML += `<div class="flex items-start"><i class="fas fa-exclamation-triangle text-red-500 mt-1 mr-3"></i><div><p class="font-semibold text-sm">Préstamo Atrasado</p><p class="text-xs text-gray-600">${loan.clients.name} - Balance: ${formatCurrency(loan.balance)}</p></div></div>`;
              }
         });
-        if (!hasNotifications) list.innerHTML = '<p class="text-sm text-gray-500">No hay notificaciones.</p>';
+
+        // Pagos próximos a vencer
+        const today = new Date();
+        const sevenDaysFromNow = new Date();
+        sevenDaysFromNow.setDate(today.getDate() + 7);
+        let upcomingTotal = 0;
+        const upcomingPayments = [];
+
+        loans.filter(l => l.status === 'Activo').forEach(loan => {
+            if (!loan.amortization_schedule) return;
+            loan.amortization_schedule
+                .filter(inst => inst.status === 'Pendiente')
+                .forEach(inst => {
+                    const dueDate = new Date(inst.dueDate);
+                    if (dueDate >= today && dueDate <= sevenDaysFromNow) {
+                        upcomingPayments.push({ loan, inst });
+                        upcomingTotal += inst.payment;
+                    }
+                });
+        });
+
+        if (upcomingPayments.length > 0) {
+            hasContent = true;
+            list.innerHTML += '<hr class="my-3">';
+            upcomingPayments.sort((a, b) => new Date(a.inst.dueDate) - new Date(b.inst.dueDate));
+            upcomingPayments.forEach(({loan, inst}) => {
+                 list.innerHTML += `<div class="flex items-start"><i class="fas fa-calendar-check text-green-500 mt-1 mr-3"></i><div><p class="font-semibold text-sm">Próximo Pago: ${formatDate(inst.dueDate)}</p><p class="text-xs text-gray-600">${loan.clients.name} - Cuota: ${formatCurrency(inst.payment)}</p></div></div>`;
+            });
+        }
+        
+        document.getElementById('stat-upcoming-collections').textContent = formatCurrency(upcomingTotal);
+
+        if (!hasContent) list.innerHTML = '<p class="text-sm text-gray-500">No hay notificaciones.</p>';
     };
     
     const renderClientsTable = () => {
@@ -352,7 +450,7 @@
         const tbody = document.getElementById('loans-table-body');
         tbody.innerHTML = loans.map(loan => {
             const statusColor = loan.status === 'Activo' ? 'text-green-600' : 'text-gray-500';
-            return `<tr><td class="py-2 px-4 border-b">${loan.clients ? loan.clients.name : 'N/A'}</td><td class="py-2 px-4 border-b">${formatCurrency(loan.principal)}</td><td class="py-2 px-4 border-b">${formatCurrency(loan.balance)}</td><td class="py-2 px-4 border-b font-semibold ${statusColor}">${loan.status}</td><td class="py-2 px-4 border-b"><button class="text-blue-500 hover:text-blue-700 mr-2" onclick="viewLoanDetail(${loan.id})"><i class="fas fa-eye"></i></button></td></tr>`;
+            return `<tr><td class="py-2 px-4 border-b">${loan.clients ? loan.clients.name : 'N/A'}</td><td class="py-2 px-4 border-b">${formatCurrency(loan.principal)}</td><td class="py-2 px-4 border-b">${formatCurrency(loan.balance)}</td><td class="py-2 px-4 border-b font-semibold ${statusColor}">${loan.status}</td><td class="py-2 px-4 border-b"><button class="text-blue-500 hover:text-blue-700 mr-4" onclick="viewLoanDetail(${loan.id})"><i class="fas fa-eye"></i></button><button class="text-red-500 hover:text-red-700" onclick="cancelLoan(${loan.id})"><i class="fas fa-trash-alt"></i></button></td></tr>`;
         }).join('');
     };
 
@@ -388,8 +486,13 @@
         
         document.getElementById('loan-detail-id').textContent = `PR-${String(loan.id).padStart(4,'0')}`;
 
+        let actionButtons = `<button class="bg-blue-500 text-white px-3 py-1 rounded text-sm" onclick="generatePromissoryNote(${loan.id})">Pagaré Notarial</button><button class="bg-gray-500 text-white px-3 py-1 rounded text-sm" onclick="printPaymentHistory(${loan.id})">Historial de Pagos</button>`;
+        if (loan.status === 'Pagado') {
+            actionButtons += `<button class="bg-green-600 text-white px-3 py-1 rounded text-sm" onclick="generatePayoffLetter(${loan.id})">Carta de Saldo</button>`;
+        }
+
         const content = document.getElementById('loan-detail-content');
-        content.innerHTML = `<div><h3 class="text-lg font-bold mb-2">Información General</h3><p><strong>Cliente:</strong> ${loan.clients.name}</p><p><strong>Monto Prestado:</strong> ${formatCurrency(loan.principal)}</p><p><strong>Balance Actual:</strong> ${formatCurrency(loan.balance)}</p><p><strong>Interés por cuota:</strong> ${formatCurrency(loan.interest_per_installment)}</p><p><strong>Modalidad:</strong> ${loan.frequency}</p><p><strong>Estado:</strong> ${loan.status}</p><div class="mt-4 space-x-2"><button class="bg-blue-500 text-white px-3 py-1 rounded text-sm" onclick="generatePromissoryNote(${loan.id})">Pagaré Notarial</button><button class="bg-gray-500 text-white px-3 py-1 rounded text-sm" onclick="printPaymentHistory(${loan.id})">Historial de Pagos</button></div></div><div><h3 class="text-lg font-bold mb-2">Plan de Amortización</h3><div class="max-h-80 overflow-y-auto border rounded"><table class="min-w-full text-sm"><thead class="bg-gray-100"><tr><th class="p-2 text-left">#</th><th class="p-2 text-left">Fecha</th><th class="p-2 text-left">Cuota</th><th class="p-2 text-left">Estado</th><th class="p-2 text-left">Acción</th></tr></thead><tbody>${loan.amortization_schedule.map((inst, index) => `<tr class="${inst.status === 'Pagado' ? 'bg-green-50' : ''}"><td class="p-2 border-t">${inst.installment}</td><td class="p-2 border-t">${formatDate(inst.dueDate)}</td><td class="p-2 border-t">${formatCurrency(inst.payment)}</td><td class="p-2 border-t font-semibold ${inst.status === 'Pagado' ? 'text-green-600' : 'text-gray-600'}">${inst.status}</td><td class="p-2 border-t">${inst.status === 'Pendiente' ? `<button class="bg-green-500 text-white px-2 py-1 rounded text-xs" onclick="openPaymentModal(${loan.id}, ${index})">Pagar</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>`;
+        content.innerHTML = `<div><h3 class="text-lg font-bold mb-2">Información General</h3><p><strong>Cliente:</strong> ${loan.clients.name}</p><p><strong>Monto Prestado:</strong> ${formatCurrency(loan.principal)}</p><p><strong>Balance Actual:</strong> ${formatCurrency(loan.balance)}</p><p><strong>Interés por cuota:</strong> ${formatCurrency(loan.interest_per_installment)}</p><p><strong>Modalidad:</strong> ${loan.frequency}</p><p><strong>Estado:</strong> ${loan.status}</p><div class="mt-4 space-x-2">${actionButtons}</div></div><div><h3 class="text-lg font-bold mb-2">Plan de Amortización</h3><div class="max-h-80 overflow-y-auto border rounded"><table class="min-w-full text-sm"><thead class="bg-gray-100"><tr><th class="p-2 text-left">#</th><th class="p-2 text-left">Fecha</th><th class="p-2 text-left">Cuota</th><th class="p-2 text-left">Estado</th><th class="p-2 text-left">Acción</th></tr></thead><tbody>${loan.amortization_schedule.map((inst, index) => `<tr class="${inst.status === 'Pagado' ? 'bg-green-50' : ''}"><td class="p-2 border-t">${inst.installment}</td><td class="p-2 border-t">${formatDate(inst.dueDate)}</td><td class="p-2 border-t">${formatCurrency(inst.payment)}</td><td class="p-2 border-t font-semibold ${inst.status === 'Pagado' ? 'text-green-600' : 'text-gray-600'}">${inst.status}</td><td class="p-2 border-t">${inst.status === 'Pendiente' ? `<button class="bg-green-500 text-white px-2 py-1 rounded text-xs" onclick="openPaymentModal(${loan.id}, ${index})">Pagar</button>` : ''}</td></tr>`).join('')}</tbody></table></div></div>`;
 
         renderPaymentHistory(loanId);
         showPage('loan-detail');
@@ -401,7 +504,7 @@
         if (loanPayments.length === 0) {
             container.innerHTML = '<p class="text-gray-500">No hay pagos registrados para este préstamo.</p>'; return;
         }
-        container.innerHTML = `<table class="min-w-full text-sm"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Fecha</th><th class="p-2 text-left">Monto Pagado</th><th class="p-2 text-left">Mora</th><th class="p-2 text-left">Total</th><th class="p-2 text-left">Acción</th></tr></thead><tbody>${loanPayments.map(p => `<tr><td class="p-2 border-t">${formatDate(p.payment_date)}</td><td class="p-2 border-t">${formatCurrency(Number(p.amount) - Number(p.late_fee))}</td><td class="p-2 border-t">${formatCurrency(p.late_fee)}</td><td class="p-2 border-t font-bold">${formatCurrency(p.amount)}</td><td class="p-2 border-t"><button class="text-blue-500" onclick="generateReceipt(${p.id})"><i class="fas fa-receipt"></i> Recibo</button></td></tr>`).join('')}</tbody></table>`;
+        container.innerHTML = `<table class="min-w-full text-sm"><thead class="bg-gray-100"><tr><th class="p-2 text-left">Fecha</th><th class="p-2 text-left">Monto Pagado</th><th class="p-2 text-left">Mora</th><th class="p-2 text-left">Total</th><th class="p-2 text-left">Acción</th></tr></thead><tbody>${loanPayments.map(p => `<tr><td class="p-2 border-t">${formatDate(p.payment_date)}</td><td class="p-2 border-t">${formatCurrency(Number(p.amount) - Number(p.late_fee))}</td><td class="p-2 border-t">${formatCurrency(p.late_fee)}</td><td class="p-2 border-t font-bold">${formatCurrency(p.amount)}</td><td class="p-2 border-t space-x-2"><button class="text-blue-500" onclick="generateReceipt(${p.id})"><i class="fas fa-receipt"></i> Recibo</button><button class="text-red-500" onclick="cancelPayment(${p.id})"><i class="fas fa-times-circle"></i> Cancelar</button></td></tr>`).join('')}</tbody></table>`;
     };
 
     // --- CRUD OPERATIONS ---
@@ -418,7 +521,7 @@
             console.error(error); alert("Error al guardar cliente.");
         } else {
             this.reset();
-            closeModal('client-modal');
+            closeModal(document.getElementById('client-modal'));
             await fetchData();
         }
         showLoader(false);
@@ -458,7 +561,7 @@
         }]);
 
         this.reset();
-        closeModal('loan-modal');
+        closeModal(document.getElementById('loan-modal'));
         document.getElementById('amortization-preview').classList.add('hidden');
         document.getElementById('save-loan').disabled = true;
         amortizationData = null;
@@ -513,7 +616,7 @@
         }]);
         
         this.reset();
-        closeModal('payment-modal');
+        closeModal(document.getElementById('payment-modal'));
         await fetchData();
         viewLoanDetail(loanId); // Re-render detail view with fresh data
         showLoader(false);
@@ -533,7 +636,7 @@
         if (error) { console.error(error); alert("Error guardando el gasto."); }
         else {
             this.reset();
-            closeModal('expense-modal');
+            closeModal(document.getElementById('expense-modal'));
             await fetchData();
         }
         showLoader(false);
@@ -562,7 +665,7 @@
 
         await fetchData();
         
-        openModal('loan-modal');
+        openModal(document.getElementById('loan-modal'));
         document.getElementById('loan-client').value = newClient.id;
         document.getElementById('loan-principal').value = app.amount;
         showLoader(false);
@@ -574,6 +677,90 @@
         if(error) { console.error(error); alert("Error al rechazar la solicitud."); }
         await fetchData();
         showLoader(false);
+    };
+
+    window.cancelPayment = async (paymentId) => {
+        if (!confirm('¿Está seguro de que desea cancelar este pago? Esta acción es irreversible.')) return;
+        
+        showLoader(true);
+        const paymentToCancel = payments.find(p => p.id === paymentId);
+        if (!paymentToCancel) {
+            alert('Pago no encontrado.'); showLoader(false); return;
+        }
+
+        const loan = loans.find(l => l.id === paymentToCancel.loan_id);
+        const installment = loan.amortization_schedule.find(inst => inst.installment === paymentToCancel.installment_number);
+        
+        try {
+            // 1. Delete payment record
+            const { error: paymentError } = await supabase.from('payments').delete().eq('id', paymentId);
+            if (paymentError) throw paymentError;
+
+            // 2. Delete cash flow entry
+            const { error: cashError } = await supabase.from('cash_flow').delete()
+                .match({ 
+                    type: 'Ingreso', 
+                    description: `Pago de ${loan.clients.name} (Cuota ${paymentToCancel.installment_number})`,
+                    amount: paymentToCancel.amount
+                });
+            if (cashError) console.warn("Could not delete cash flow entry for canceled payment:", cashError.message); // Non-critical
+
+            // 3. Update loan
+            const newBalance = Number(loan.balance) + Number(installment.principal);
+            const updatedSchedule = loan.amortization_schedule.map(inst => 
+                inst.installment === paymentToCancel.installment_number ? { ...inst, status: 'Pendiente' } : inst
+            );
+            
+            const { error: loanUpdateError } = await supabase.from('loans').update({
+                balance: newBalance,
+                status: 'Activo',
+                amortization_schedule: updatedSchedule
+            }).eq('id', loan.id);
+            if(loanUpdateError) throw loanUpdateError;
+
+            // 4. Refresh data
+            await fetchData();
+            viewLoanDetail(loan.id); // Refresh detail view
+
+        } catch (error) {
+            console.error("Error cancelling payment:", error);
+            alert('Ocurrió un error al cancelar el pago.');
+        } finally {
+            showLoader(false);
+        }
+    };
+
+    window.cancelLoan = async (loanId) => {
+         if (!confirm('¿Está seguro de que desea cancelar este préstamo? Se eliminarán todos sus pagos y registros asociados de forma permanente.')) return;
+        
+        showLoader(true);
+        const loanToCancel = loans.find(l => l.id === loanId);
+        try {
+            // Delete associated payments
+            await supabase.from('payments').delete().eq('loan_id', loanId);
+            
+            // Delete associated cash flow entries (best effort)
+            await supabase.from('cash_flow').delete().match({ 
+                type: 'Salida', 
+                description: `Desembolso préstamo a ${loanToCancel.clients.name}`, 
+                amount: loanToCancel.principal 
+            });
+            // This part is complex without a direct link, so we'll skip deleting individual payment cashflows for now.
+            // A better solution would be a loan_id in the cash_flow table.
+
+            // Delete the loan itself
+            const { error } = await supabase.from('loans').delete().eq('id', loanId);
+            if (error) throw error;
+            
+            await fetchData();
+            showPage('loans');
+
+        } catch (error) {
+            console.error("Error cancelling loan:", error);
+            alert('Ocurrió un error al cancelar el préstamo.');
+        } finally {
+            showLoader(false);
+        }
     };
     
     // --- UTILITY & CALCULATION FUNCTIONS ---
@@ -623,26 +810,195 @@
     };
     navLinks.forEach(link => { link.addEventListener('click', (e) => { e.preventDefault(); const pageId = link.getAttribute('href').substring(1); showPage(pageId); }); });
     document.getElementById('back-to-loans').addEventListener('click', () => showPage('loans'));
-    const openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden');
-    const closeModal = (modalId) => document.getElementById(modalId).classList.add('hidden');
+    
+    const openModal = (modal) => {
+        if(typeof modal === 'string') modal = document.getElementById(modal);
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+    const closeModal = (modal) => {
+        if(typeof modal === 'string') modal = document.getElementById(modal);
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    document.querySelectorAll('.modal-container').forEach(modal => {
+        modal.addEventListener('click', (e) => { if(e.target === modal) closeModal(modal); });
+        modal.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => closeModal(modal)));
+    });
+
     document.getElementById('open-client-modal').addEventListener('click', () => openModal('client-modal'));
-    document.getElementById('close-client-modal').addEventListener('click', () => closeModal('client-modal'));
     document.getElementById('open-loan-modal').addEventListener('click', () => openModal('loan-modal'));
-    document.getElementById('close-loan-modal').addEventListener('click', () => { closeModal('loan-modal'); document.getElementById('amortization-preview').classList.add('hidden'); document.getElementById('save-loan').disabled = true; amortizationData = null; });
     window.openPaymentModal = (loanId, installmentIndex) => { const loan = loans.find(l => l.id === loanId); const installment = loan.amortization_schedule[installmentIndex]; document.getElementById('payment-loan-id').value = loanId; document.getElementById('payment-installment-index').value = installmentIndex; document.getElementById('payment-amount').value = installment.payment.toFixed(2); document.getElementById('payment-date').value = new Date().toISOString().split('T')[0]; openModal('payment-modal'); };
-    document.getElementById('close-payment-modal').addEventListener('click', () => closeModal('payment-modal'));
     document.getElementById('open-expense-modal').addEventListener('click', () => { document.getElementById('expense-date').value = new Date().toISOString().split('T')[0]; openModal('expense-modal') });
-    document.getElementById('close-expense-modal').addEventListener('click', () => closeModal('expense-modal'));
+    
+    // Sidebar toggle logic
     const sidebar = document.getElementById('sidebar');
-    document.getElementById('menu-button').addEventListener('click', () => { sidebar.classList.toggle('-translate-x-full'); });
+    const sidebarOverlay = document.getElementById('sidebar-overlay');
+    const menuButton = document.getElementById('menu-button');
+    const toggleSidebar = () => {
+        sidebar.classList.toggle('-translate-x-full');
+        sidebarOverlay.classList.toggle('hidden');
+    };
+    menuButton.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', toggleSidebar);
 
     // --- PRINTING FUNCTIONS ---
-    window.generateReceipt = (paymentId) => { const payment = payments.find(p => p.id === paymentId); if (!payment) return; const loan = loans.find(l => l.id === payment.loan_id); const client = clients.find(c => c.id === loan.client_id); const content = `<div class="p-4 border border-gray-300"><h3 class="text-xl font-bold text-center mb-4">Recibo de Pago</h3><div class="flex justify-between mb-2"><span><strong>Fecha:</strong> ${formatDate(payment.payment_date)}</span><span><strong>Recibo No:</strong> ${String(payment.id).padStart(5,'0')}</span></div><p><strong>Recibido de:</strong> ${client.name}</p><p><strong>Préstamo No:</strong> PR-${String(loan.id).padStart(4,'0')}</p><hr class="my-3"><div class="flex justify-between font-semibold"><span>Pago Cuota #${payment.installment_number}:</span><span>${formatCurrency(Number(payment.amount) - Number(payment.late_fee))}</span></div><div class="flex justify-between font-semibold"><span>Mora:</span><span>${formatCurrency(payment.late_fee)}</span></div><hr class="my-2"><div class="flex justify-between font-bold text-lg"><span>TOTAL PAGADO:</span><span>${formatCurrency(payment.amount)}</span></div><hr class="my-3"><p class="text-sm"><strong>Balance restante del préstamo:</strong> ${formatCurrency(loan.balance)}</p><div class="mt-12 text-center"><p class="border-t-2 w-1/2 mx-auto pt-2">Firma Autorizada</p></div></div>`; document.getElementById('print-content').innerHTML = content; openModal('print-modal'); };
-    window.generatePromissoryNote = (loanId) => { const loan = loans.find(l => l.id === loanId); const client = clients.find(c => c.id === loan.client_id); const totalAmount = Number(loan.principal) + (Number(loan.interest_per_installment) * loan.term); const content = `<div class="p-4"><h3 class="text-2xl font-bold text-center mb-6">PAGARÉ NOTARIAL</h3><p class="text-justify leading-relaxed">Yo, <strong>${client.name.toUpperCase()}</strong>, mayor de edad, de nacionalidad dominicana, portador(a) de la Cédula de Identidad y Electoral No. ${client.id_card}, domiciliado(a) y residente en [Dirección del Cliente], por medio del presente acto, DEBO Y PAGARÉ... la suma de <strong>${formatCurrency(totalAmount)}</strong>... en ${loan.term} cuotas ${loan.frequency.toLowerCase()}s... de ${formatCurrency(loan.amortization_schedule[0].payment)}...</p></div>`; document.getElementById('print-content').innerHTML = content; openModal('print-modal'); };
-    window.printPaymentHistory = (loanId) => { const loan = loans.find(l => l.id === loanId); const client = clients.find(c => c.id === loan.client_id); const loanPayments = payments.filter(p => p.loan_id === loanId); let paymentsHtml = loanPayments.length > 0 ? loanPayments.map(p => `<tr><td class="p-1 border">${formatDate(p.payment_date)}</td><td class="p-1 border text-right">${formatCurrency(p.amount)}</td><td class="p-1 border text-right">${formatCurrency(p.late_fee)}</td></tr>`).join('') : '<tr><td colspan="3" class="p-1 border text-center">Sin pagos</td></tr>'; const content = `<div class="p-4"><h3 class="text-xl font-bold text-center mb-4">Historial de Pagos</h3><p><strong>Cliente:</strong> ${client.name}</p><p><strong>Préstamo No:</strong> PR-${String(loan.id).padStart(4,'0')}</p><hr class="my-2"><table class="w-full text-sm border-collapse"><thead><tr><th class="p-1 border bg-gray-100 text-left">Fecha</th><th class="p-1 border bg-gray-100 text-right">Monto</th><th class="p-1 border bg-gray-100 text-right">Mora</th></tr></thead><tbody>${paymentsHtml}</tbody></table></div>`; document.getElementById('print-content').innerHTML = content; openModal('print-modal'); };
-    document.getElementById('close-print-modal').addEventListener('click', () => closeModal('print-modal'));
-    document.getElementById('print-button').addEventListener('click', () => window.print());
+    window.generateReceipt = (paymentId) => {
+        const payment = payments.find(p => p.id === paymentId);
+        if (!payment) return;
+        const loan = loans.find(l => l.id === payment.loan_id);
+        const client = clients.find(c => c.id === loan.client_id);
+        const content = `
+            <h3>Recibo de Pago</h3>
+            <p><span>Fecha: ${formatDate(payment.payment_date)}</span><span>Recibo No: ${String(payment.id).padStart(5,'0')}</span></p>
+            <p><span>Recibido de: ${client.name}</span></p>
+            <p><span>Préstamo No: PR-${String(loan.id).padStart(4,'0')}</span></p>
+            <p>------------------------------------</p>
+            <p><span>Pago Cuota #${payment.installment_number}:</span><span>${formatCurrency(Number(payment.amount) - Number(payment.late_fee))}</span></p>
+            <p><span>Mora:</span><span>${formatCurrency(payment.late_fee)}</span></p>
+            <p>------------------------------------</p>
+            <p><span><strong>TOTAL PAGADO:</strong></span><span><strong>${formatCurrency(payment.amount)}</strong></span></p>
+            <p>------------------------------------</p>
+            <p><span>Balance restante:</span><span> ${formatCurrency(loan.balance)}</span></p>`;
+        
+        document.getElementById('print-content').innerHTML = content;
+        document.getElementById('print-content').className = 'print-area'; // Reset class for generic printing
+        document.getElementById('print-pos-button').classList.remove('hidden');
+        document.getElementById('print-pos-57mm-button').classList.remove('hidden');
+        document.getElementById('print-letter-button').classList.add('hidden');
+        document.getElementById('print-generic-button').classList.add('hidden');
+        
+        openModal('print-modal');
+    };
+    
+    window.generatePromissoryNote = (loanId) => {
+        const loan = loans.find(l => l.id === loanId);
+        const client = clients.find(c => c.id === loan.client_id);
+        const totalAmount = Number(loan.principal) + (Number(loan.interest_per_installment) * loan.term);
+        const installmentAmount = loan.amortization_schedule[0].payment;
+        const noteText = `Yo, ${client.name.toUpperCase()}, Mayor de edad, de nacionalidad [Nacionalidad], portador de Cedula/Pasaporte ${client.id_card}, Domiciliado y residente en [Direccion Cliente], por medio de la presente acto, DEBO Y PAGARE, sin protesta ni requerimiento alguno, a la orden de Adonais Almonte Flete, o a quien sus derechos represente, La suma de ${formatCurrency(totalAmount)}, Valor que incluye capital mas los intereses, recibido en calidad de prestamo a mi entera sastifaccion. Me Comprometo a pagar dicha suma en ${loan.term} cuotas ${loan.frequency.toLowerCase()}s y consecutivas de ${formatCurrency(installmentAmount)}, cada una Comenzando ${formatDate(loan.issue_date)}, la falta de pago de una de las cuotas a su vencimiento hara exigible el pago total de la deuda.`;
+        
+        const amortizationTableHtml = `
+            <h4 style="text-align: center; margin-top: 20pt;">Plan de Pagos</h4>
+            <table>
+                <thead>
+                    <tr><th>Cuota</th><th>Fecha de Vencimiento</th><th>Monto</th></tr>
+                </thead>
+                <tbody>
+                    ${loan.amortization_schedule.map(inst => `<tr><td>${inst.installment}</td><td>${formatDate(inst.dueDate)}</td><td>${formatCurrency(inst.payment)}</td></tr>`).join('')}
+                </tbody>
+            </table>`;
 
+        const letterContent = `
+            <h3>PAGARÉ NOTARIAL</h3>
+            <p>${noteText}</p>
+            ${amortizationTableHtml}
+            <div class="signatures">
+                <div class="signature-block">
+                    <p class="signature-line">&nbsp;</p>
+                    <p><strong>Deudor</strong></p>
+                </div>
+                <div class="signature-block">
+                    <p class="signature-line">&nbsp;</p>
+                    <p><strong>Acreedor</strong></p>
+                </div>
+            </div>`;
+
+        const posContent = `
+            <h3>PAGARÉ</h3>
+            <p>${noteText}</p>
+            <p>--- Plan de Pagos ---</p>
+            ${loan.amortization_schedule.map(inst => `<p><span>#${inst.installment}: ${formatDate(inst.dueDate)}</span><span>${formatCurrency(inst.payment)}</span></p>`).join('')}
+            <p class="signature-line">Firma Deudor</p>
+            <p class="signature-line">Firma Acreedor</p>
+        `;
+
+        const printContentDiv = document.getElementById('print-content');
+        printContentDiv.dataset.letter = letterContent;
+        printContentDiv.dataset.pos = posContent;
+        
+        printContentDiv.innerHTML = letterContent;
+        printContentDiv.className = 'print-area print-letter';
+        
+        document.getElementById('print-pos-button').classList.remove('hidden');
+        document.getElementById('print-pos-57mm-button').classList.add('hidden');
+        document.getElementById('print-letter-button').classList.remove('hidden');
+        document.getElementById('print-generic-button').classList.add('hidden');
+        
+        openModal('print-modal');
+    };
+
+    window.printPaymentHistory = (loanId) => {
+        const loan = loans.find(l => l.id === loanId);
+        const client = clients.find(c => c.id === loan.client_id);
+        const loanPayments = payments.filter(p => p.loan_id === loanId);
+        let paymentsList = loanPayments.length > 0 ? loanPayments.map(p => `<p><span>${formatDate(p.payment_date)}</span><span>${formatCurrency(p.amount)}</span></p>`).join('') : '<p>Sin pagos</p>';
+        const content = `<div><h3>Historial de Pagos</h3><p><strong>Cliente:</strong> ${client.name}</p><p><strong>Préstamo:</strong> PR-${String(loan.id).padStart(4,'0')}</p><hr><p><strong>Fecha / Monto</strong></p>${paymentsList}</div>`;
+        
+        document.getElementById('print-content').innerHTML = content;
+        document.getElementById('print-content').className = 'print-area';
+
+        document.getElementById('print-pos-button').classList.add('hidden');
+        document.getElementById('print-pos-57mm-button').classList.remove('hidden');
+        document.getElementById('print-letter-button').classList.add('hidden');
+        document.getElementById('print-generic-button').classList.remove('hidden');
+        
+        openModal('print-modal');
+    };
+
+    window.generatePayoffLetter = (loanId) => {
+        const loan = loans.find(l => l.id === loanId);
+        const client = clients.find(c => c.id === loan.client_id);
+        const today = new Date();
+        const formattedDate = today.toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
+
+        const content = `<div class="p-4">
+            <h3 class="text-2xl font-bold text-center mb-6 underline">CARTA DE SALDO</h3>
+            <p class="text-right mb-8">Santo Domingo, D.N., ${formattedDate}</p>
+            <p class="mb-4">A quien pueda interesar,</p>
+            <p class="text-justify leading-relaxed mb-6">Por medio de la presente, hacemos constar que el/la Sr(a). <strong>${client.name.toUpperCase()}</strong>, portador(a) de la Cédula de Identidad y Electoral No. ${client.id_card}, ha saldado en su totalidad la deuda correspondiente al préstamo No. <strong>PR-${String(loan.id).padStart(4,'0')}</strong>, otorgado en fecha ${formatDate(loan.issue_date)} por un monto de ${formatCurrency(loan.principal)}.</p>
+            <p class="text-justify leading-relaxed">No teniendo más nada que agregar y certificando que no queda balance pendiente alguno sobre esta obligación, se despide,</p>
+            <div class="mt-20 text-center">
+                <p class="border-t-2 w-1/2 mx-auto pt-2">Adonais Almonte Flete</p>
+                <p>Acreedor</p>
+            </div>
+        </div>`;
+        
+        document.getElementById('print-content').innerHTML = content;
+        document.getElementById('print-content').className = 'print-area print-letter';
+        
+        document.getElementById('print-pos-button').classList.add('hidden');
+        document.getElementById('print-pos-57mm-button').classList.add('hidden');
+        document.getElementById('print-letter-button').classList.add('hidden');
+        document.getElementById('print-generic-button').classList.remove('hidden').textContent = 'Imprimir Carta de Saldo';
+        
+        openModal('print-modal');
+    };
+    
+    document.getElementById('print-pos-57mm-button').addEventListener('click', () => {
+        const printContentDiv = document.getElementById('print-content');
+        printContentDiv.className = 'print-area print-pos-roll-57mm';
+        setTimeout(() => window.print(), 200);
+    });
+    
+    document.getElementById('print-pos-button').addEventListener('click', () => {
+        const printContentDiv = document.getElementById('print-content');
+        printContentDiv.innerHTML = printContentDiv.dataset.pos || printContentDiv.innerHTML;
+        printContentDiv.className = 'print-area print-pos-roll';
+        setTimeout(() => window.print(), 200);
+    });
+
+    document.getElementById('print-letter-button').addEventListener('click', () => {
+        const printContentDiv = document.getElementById('print-content');
+        printContentDiv.innerHTML = printContentDiv.dataset.letter;
+        printContentDiv.className = 'print-area print-letter';
+        setTimeout(() => window.print(), 200);
+    });
+
+    document.getElementById('print-generic-button').addEventListener('click', () => {
+        window.print();
+    });
 
     // --- INITIALIZATION ---
     document.addEventListener('DOMContentLoaded', () => {
@@ -655,6 +1011,9 @@
         window.generateReceipt = generateReceipt;
         window.generatePromissoryNote = generatePromissoryNote;
         window.printPaymentHistory = printPaymentHistory;
+        window.generatePayoffLetter = generatePayoffLetter;
+        window.cancelPayment = cancelPayment;
+        window.cancelLoan = cancelLoan;
 
         fetchData(); // Carga inicial de datos
     });
